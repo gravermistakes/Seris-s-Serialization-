@@ -1,12 +1,13 @@
-name: Automated Unzipping
+name: Automated Archive Extraction
 
 on:
   push:
     paths:
       - '**.zip'
+      - '**.rar'
 
 jobs:
-  unzip:
+  extract:
     # Skip commits created by this workflow to prevent infinite loops
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
@@ -19,70 +20,74 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Find and unzip new ZIP files
+      - name: Install extraction tools
+        run: sudo apt-get install -y p7zip-full
+
+      - name: Find and extract new archives
         run: |
           BEFORE="${{ github.event.before }}"
           SHA="${{ github.sha }}"
 
-          # On first push to a branch, 'before' is all zeros — list all tracked ZIP files instead
+          # On first push to a branch, 'before' is all zeros — list all tracked archives instead
           if [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
-            echo "First push to branch — scanning all tracked ZIP files."
-            CHANGED_ZIPS=$(git ls-files '*.zip' || true)
+            echo "First push to branch — scanning all tracked archives."
+            CHANGED_ARCHIVES=$(git ls-files '*.zip' '*.rar' || true)
           else
-            CHANGED_ZIPS=$(git diff --name-only --diff-filter=AM "$BEFORE" "$SHA" | grep '\.zip$' || true)
+            CHANGED_ARCHIVES=$(git diff --name-only --diff-filter=AM "$BEFORE" "$SHA" | grep -E '\.(zip|rar)$' || true)
           fi
 
-          if [ -z "$CHANGED_ZIPS" ]; then
-            echo "No ZIP files changed in this push."
+          if [ -z "$CHANGED_ARCHIVES" ]; then
+            echo "No archives changed in this push."
             exit 0
           fi
 
-          echo "ZIP files to unzip:"
-          echo "$CHANGED_ZIPS"
+          echo "Archives to extract:"
+          echo "$CHANGED_ARCHIVES"
 
-          # Use a temp file to pass staged dirs to the next step (handles spaces in names)
           STAGED_DIRS_FILE=$(mktemp)
 
-          while IFS= read -r ZIP_FILE; do
-            # Strip leading ./ if present
-            ZIP_FILE="${ZIP_FILE#./}"
-            if [ ! -f "$ZIP_FILE" ]; then
-              echo "Warning: '$ZIP_FILE' not found, skipping."
+          while IFS= read -r ARCHIVE; do
+            ARCHIVE="${ARCHIVE#./}"
+            if [ ! -f "$ARCHIVE" ]; then
+              echo "Warning: '$ARCHIVE' not found, skipping."
               continue
             fi
 
-            ZIP_DIR=$(dirname "$ZIP_FILE")
-            ZIP_NAME=$(basename "$ZIP_FILE" .zip)
-            DEST_DIR="$ZIP_DIR/$ZIP_NAME"
+            ARCHIVE_DIR=$(dirname "$ARCHIVE")
+            ARCHIVE_BASE=$(basename "$ARCHIVE")
+            # Strip both .zip and .rar extensions
+            ARCHIVE_NAME="${ARCHIVE_BASE%.zip}"
+            ARCHIVE_NAME="${ARCHIVE_NAME%.rar}"
+            DEST_DIR="$ARCHIVE_DIR/$ARCHIVE_NAME"
             REAL_DEST=$(realpath -m "$DEST_DIR")
 
-            # Validate all paths in the ZIP before extracting (path traversal protection)
-            echo "Validating '$ZIP_FILE'..."
+            # Validate paths before extracting (path traversal protection)
+            echo "Validating '$ARCHIVE'..."
             BAD_PATH=0
             while IFS= read -r ENTRY; do
+              [ -z "$ENTRY" ] && continue
               REAL_ENTRY=$(realpath -m "$REAL_DEST/$ENTRY")
               if [[ "$REAL_ENTRY" != "$REAL_DEST"* ]]; then
-                echo "Error: Entry '$ENTRY' in '$ZIP_FILE' would escape destination. Skipping archive."
+                echo "Error: Entry '$ENTRY' in '$ARCHIVE' would escape destination. Skipping."
                 BAD_PATH=1
                 break
               fi
-            done < <(unzip -Z1 "$ZIP_FILE")
+            done < <(7z l -slt "$ARCHIVE" | grep '^Path = ' | tail -n +2 | sed 's/^Path = //')
 
             if [ "$BAD_PATH" -eq 1 ]; then
               continue
             fi
 
-            echo "Unzipping '$ZIP_FILE' into '$DEST_DIR'..."
+            echo "Extracting '$ARCHIVE' into '$DEST_DIR'..."
             mkdir -p "$DEST_DIR"
-            unzip -o "$ZIP_FILE" -d "$DEST_DIR"
+            7z x "$ARCHIVE" -o"$DEST_DIR" -y
 
             echo "$DEST_DIR" >> "$STAGED_DIRS_FILE"
-          done <<< "$CHANGED_ZIPS"
+          done <<< "$CHANGED_ARCHIVES"
 
-          # Export path to staged dirs list for use in the next step
           echo "STAGED_DIRS_FILE=$STAGED_DIRS_FILE" >> "$GITHUB_ENV"
 
-      - name: Commit and push unzipped files
+      - name: Commit and push extracted files
         run: |
           if [ -z "$STAGED_DIRS_FILE" ] || [ ! -s "$STAGED_DIRS_FILE" ]; then
             echo "Nothing to commit."
@@ -92,7 +97,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Stage only the directories produced by unzipping
           while IFS= read -r DIR; do
             git add "$DIR"
           done < "$STAGED_DIRS_FILE"
@@ -101,6 +105,6 @@ jobs:
             echo "No changes to commit."
           else
             SHORT_SHA=$(echo "$GITHUB_SHA" | cut -c1-7)
-            git commit -m "chore: unzip archives from ${SHORT_SHA} [skip ci]"
+            git commit -m "chore: extract archives from ${SHORT_SHA} [skip ci]"
             git push
           fi
