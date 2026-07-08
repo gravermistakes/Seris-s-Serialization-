@@ -5,6 +5,7 @@ on:
     paths:
       - '**.zip'
       - '**.rar'
+  workflow_dispatch:
 
 jobs:
   extract:
@@ -28,9 +29,9 @@ jobs:
           BEFORE="${{ github.event.before }}"
           SHA="${{ github.sha }}"
 
-          # On first push to a branch, 'before' is all zeros — list all tracked archives instead
-          if [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
-            echo "First push to branch — scanning all tracked archives."
+          # On manual dispatch or first push to a branch, scan all tracked archives
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            echo "Scanning all tracked archives."
             CHANGED_ARCHIVES=$(git ls-files '*.zip' '*.rar' || true)
           else
             CHANGED_ARCHIVES=$(git diff --name-only --diff-filter=AM "$BEFORE" "$SHA" | grep -E '\.(zip|rar)$' || true)
