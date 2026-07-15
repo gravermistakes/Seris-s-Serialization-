@@ -11,7 +11,7 @@ mod cli;
 use cli::{Cli, Commands};
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> anyhow::Result<()> {
     // Initialize logging
     tracing_subscriber::fmt()
         .with_env_filter(
@@ -71,7 +71,7 @@ async fn main() -> Result<()> {
                 "WARNING" => MemoryClass::Warning,
                 "LIVING" => MemoryClass::Living,
                 "EXPENDABLE" => MemoryClass::Expendable,
-                _ => return Err(DuskuraError::InvalidMemoryClass(class)),
+                _ => return Err(DuskuraError::InvalidMemoryClass(class).into()),
             };
 
             let entry = duskura.memory.create_entry(

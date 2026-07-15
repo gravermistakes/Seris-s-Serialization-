@@ -6,6 +6,7 @@ use crate::models::*;
 use crate::storage::Storage;
 use chrono::Utc;
 use uuid::Uuid;
+use sqlx::Row;
 
 pub struct PolicyEngine {
     storage: Storage,
@@ -109,7 +110,7 @@ impl PolicyEngine {
     pub async fn verify_memory_provenance(
         &self,
         identity_id: &str,
-        source: MemorySource,
+        _source: MemorySource,
     ) -> Result<()> {
         if !self.check_policy(identity_id, "MEMORY_PROVENANCE").await? {
             return Err(DuskuraError::PolicyViolation(

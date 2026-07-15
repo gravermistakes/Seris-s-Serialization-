@@ -19,7 +19,7 @@ pub enum Commands {
         name: String,
 
         /// Essential nature description
-        #[arg(short, long)]
+        #[arg(long)]
         nature: String,
 
         /// Parent identity name (optional)
@@ -47,7 +47,7 @@ pub enum Commands {
         content: String,
 
         /// Memory class (ANCHOR, WITNESS, THRESHOLD, WARNING, LIVING, EXPENDABLE)
-        #[arg(short, long)]
+        #[arg(long)]
         class: String,
 
         /// Emotional valence (-1.0 to 1.0)

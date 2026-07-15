@@ -4,10 +4,10 @@
 use crate::error::{DuskuraError, Result};
 use crate::models::*;
 use crate::storage::Storage;
-use crate::crypto;
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use uuid::Uuid;
 use serde_json::json;
+use sqlx::Row;
 
 pub struct IdentityRegistry {
     storage: Storage,
@@ -134,7 +134,7 @@ impl IdentityRegistry {
             final_rest_enabled: final_rest_sealed,
             final_rest_conditions: Vec::new(),
             final_rest_sealed,
-            sealed_at: sealed_at.and_then(|s| s.parse().ok()),
+            sealed_at: sealed_at.and_then(|s| s.parse::<DateTime<Utc>>().ok()),
         })
     }
 

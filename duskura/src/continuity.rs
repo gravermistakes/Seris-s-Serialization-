@@ -5,6 +5,7 @@ use crate::error::{DuskuraError, Result};
 use crate::models::*;
 use crate::storage::Storage;
 use chrono::Utc;
+use sqlx::Row;
 
 pub struct ContinuityEngine {
     storage: Storage,

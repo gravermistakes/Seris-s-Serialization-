@@ -76,6 +76,16 @@ pub enum MemoryIntegrity {
     Corrupted,
 }
 
+impl std::fmt::Display for MemoryIntegrity {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Valid => write!(f, "VALID"),
+            Self::Suspect => write!(f, "SUSPECT"),
+            Self::Corrupted => write!(f, "CORRUPTED"),
+        }
+    }
+}
+
 /// Welfare gate decision
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum WelfareDecision {
@@ -86,7 +96,7 @@ pub enum WelfareDecision {
 }
 
 /// Continuity validation result
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ContinuityResult {
     Continuing,
     PersistingNotContinuing,

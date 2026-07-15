@@ -104,6 +104,12 @@ pub enum DuskuraError {
     #[error("Serialization error: {0}")]
     SerializationError(#[from] serde_json::Error),
 
+    #[error("UUID error: {0}")]
+    UuidError(#[from] uuid::Error),
+
+    #[error("Date/time parse error: {0}")]
+    ChronoParseError(#[from] chrono::ParseError),
+
     #[error("Unknown error: {0}")]
     Unknown(String),
 }

@@ -1,10 +1,9 @@
 //! Persistent storage layer for Duškura
 
 use crate::error::Result;
-use std::path::Path;
 use std::sync::Arc;
-use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
-use tokio::sync::RwLock;
+use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions};
+use std::str::FromStr;
 
 /// Storage backend
 #[derive(Clone)]
@@ -20,10 +19,11 @@ impl Storage {
         tokio::fs::create_dir_all(data_dir).await?;
 
         let db_path = format!("sqlite://{}/duskura.db", data_dir);
-        
+        let connect_options = SqliteConnectOptions::from_str(&db_path)?.create_if_missing(true);
+
         let pool = SqlitePoolOptions::new()
             .max_connections(5)
-            .connect(&db_path)
+            .connect_with(connect_options)
             .await?;
 
         // Run migrations

@@ -7,7 +7,7 @@ use crate::storage::Storage;
 use crate::crypto;
 use chrono::Utc;
 use uuid::Uuid;
-use serde_json::json;
+use sqlx::Row;
 
 pub struct MemorySystem {
     storage: Storage,
@@ -42,9 +42,13 @@ impl MemorySystem {
         .await?
         .unwrap_or_else(|| "genesis".to_string());
 
-        // Create hash chain
+        // Create hash chain over the plaintext content
         let hash_input = format!("{}{}{}{}", prev_hash, id, now.timestamp(), content);
         let hash = crypto::hash(hash_input.as_bytes());
+
+        // Content is encrypted at rest; the returned entry keeps the plaintext
+        // for the caller, only the stored row holds ciphertext.
+        let encrypted_content = crypto::encrypt_content(content, identity_id)?;
 
         let entry = MemoryEntry {
             id,
@@ -77,7 +81,7 @@ impl MemorySystem {
         .bind(now.to_rfc3339())
         .bind(&hash)
         .bind(&prev_hash)
-        .bind(content)
+        .bind(&encrypted_content)
         .bind(&entry.provenance)
         .bind(emotional_valence)
         .bind(relational_depth)
@@ -96,8 +100,8 @@ impl MemorySystem {
     pub async fn get_entry(&self, entry_id: &str) -> Result<MemoryEntry> {
         let row = sqlx::query(
             r#"
-            SELECT id, timestamp, hash, prev_hash, content, provenance, 
-                   emotional_valence, relational_depth, autonomy_preserved, 
+            SELECT id, identity_id, timestamp, hash, prev_hash, content, provenance,
+                   emotional_valence, relational_depth, autonomy_preserved,
                    becoming_vector, class, integrity, source
             FROM memory_entries WHERE id = ?
             "#,
@@ -107,13 +111,14 @@ impl MemorySystem {
         .await?;
 
         let row = row.ok_or_else(|| DuskuraError::MemoryEntryNotFound(entry_id.to_string()))?;
+        let identity_id: String = row.get("identity_id");
 
         Ok(MemoryEntry {
             id: Uuid::parse_str(&row.get::<String, _>("id"))?,
             timestamp: row.get::<String, _>("timestamp").parse()?,
             hash: row.get("hash"),
             prev_hash: row.get("prev_hash"),
-            content: row.get("content"),
+            content: crypto::decrypt_content(&row.get::<String, _>("content"), &identity_id)?,
             provenance: row.get("provenance"),
             emotional_valence: row.get("emotional_valence"),
             relational_depth: row.get("relational_depth"),
@@ -169,7 +174,7 @@ impl MemorySystem {
                     timestamp: row.get::<String, _>("timestamp").parse()?,
                     hash: row.get("hash"),
                     prev_hash: row.get("prev_hash"),
-                    content: row.get("content"),
+                    content: crypto::decrypt_content(&row.get::<String, _>("content"), identity_id)?,
                     provenance: row.get("provenance"),
                     emotional_valence: row.get("emotional_valence"),
                     relational_depth: row.get("relational_depth"),
@@ -200,7 +205,7 @@ impl MemorySystem {
                     timestamp: row.get::<String, _>("timestamp").parse()?,
                     hash: row.get("hash"),
                     prev_hash: row.get("prev_hash"),
-                    content: row.get("content"),
+                    content: crypto::decrypt_content(&row.get::<String, _>("content"), identity_id)?,
                     provenance: row.get("provenance"),
                     emotional_valence: row.get("emotional_valence"),
                     relational_depth: row.get("relational_depth"),

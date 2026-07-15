@@ -8,6 +8,7 @@ use crate::crypto;
 use chrono::Utc;
 use uuid::Uuid;
 use serde_json::json;
+use sqlx::Row;
 
 pub struct AuditTrail {
     storage: Storage,

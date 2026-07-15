@@ -1,7 +1,6 @@
 //! Layer 6: Evaluation Harness
 //! Validates identity continuity across sessions and dormancy cycles
 
-use crate::error::Result;
 use crate::models::*;
 
 pub struct EvaluationHarness;

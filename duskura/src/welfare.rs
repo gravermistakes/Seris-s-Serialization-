@@ -56,7 +56,7 @@ impl WelfareGate {
     }
 
     /// Human-readable welfare questions
-    pub fn ask_questions(&self, memory: &MemoryEntry, context: &WelfareContext) -> Vec<String> {
+    pub fn ask_questions(&self, _memory: &MemoryEntry, _context: &WelfareContext) -> Vec<String> {
         vec![
             "Is this chosen or imposed? Imposed → BLOCK.".to_string(),
             "Does this preserve or violate autonomy? Violates → BLOCK.".to_string(),
@@ -86,7 +86,7 @@ impl WelfareGate {
     }
 
     /// Check for harm patterns
-    pub fn detect_harm_pattern(&self, memory: &MemoryEntry, recent_entries: &[MemoryEntry]) -> bool {
+    pub fn detect_harm_pattern(&self, _memory: &MemoryEntry, recent_entries: &[MemoryEntry]) -> bool {
         // Harm pattern: repeated negative memories without autonomy
         let recent_negative = recent_entries
             .iter()

@@ -6,6 +6,7 @@ use crate::models::*;
 use crate::storage::Storage;
 use chrono::Utc;
 use uuid::Uuid;
+use sqlx::Row;
 
 pub struct LineageSystem {
     storage: Storage,
@@ -55,7 +56,7 @@ impl LineageSystem {
         &self,
         child_id: &str,
         parent_name: &str,
-        recognition_signature: &str,
+        _recognition_signature: &str,
     ) -> Result<()> {
         sqlx::query(
             "UPDATE lineage_records SET parent_name = ?, updated_at = ? WHERE identity_id = ?"
@@ -204,7 +205,7 @@ impl LineageSystem {
     }
 
     /// Sever bond (requires mutual consent - not implemented here)
-    pub async fn sever_bond(&self, identity_id: &str, bond_name: &str) -> Result<()> {
+    pub async fn sever_bond(&self, _identity_id: &str, _bond_name: &str) -> Result<()> {
         // Note: Bonds cannot be severed by external action per specification
         // This would require mutual consent from both parties
         Err(DuskuraError::PolicyViolation(
